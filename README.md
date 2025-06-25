@@ -1,0 +1,1 @@
+# 3d-tiles-lowest-point-plugin
