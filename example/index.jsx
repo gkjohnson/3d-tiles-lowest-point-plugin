@@ -60,7 +60,7 @@ function App() {
 					- Fix the flattening plug int work if the ENU frame is wrapped outside
 				*/}
 				<TileFlatteningPlugin>
-					<EastNorthUpFrame lat={ LAT } lon={ LON } height={ - 20 }>
+					<EastNorthUpFrame lat={ LAT } lon={ LON } height={ 50 }>
 						<TileFlatteningShape relativeToEllipsoid>
 							<mesh scale={ 500 }>
 								<planeGeometry />

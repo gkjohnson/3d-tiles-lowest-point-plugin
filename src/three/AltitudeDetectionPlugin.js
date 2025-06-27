@@ -34,7 +34,7 @@ export class AltitudeDetectionPlugin {
     constructor( options ) {
 
         const {
-            onDetected = null,
+            onAltitudeChange = null,
         } = options;
 
         // make sure this runs before any flattening plugin
@@ -42,7 +42,7 @@ export class AltitudeDetectionPlugin {
         this.priority = - 1000;
 
         // options
-        this.onDetected = onDetected;
+        this.onAltitudeChange = onAltitudeChange;
 
         // local
         this.shapes = new Map();
@@ -102,7 +102,7 @@ export class AltitudeDetectionPlugin {
 	// private
 	_checkScene( tile ) {
 
-		const { shapes, originalMeshes, onDetected } = this;
+		const { shapes, originalMeshes, onAltitudeChange } = this;
 
 		const scene = originalMeshes.get( tile );
 		scene.updateMatrixWorld( true );
@@ -191,9 +191,9 @@ export class AltitudeDetectionPlugin {
 					info.minAltitude = Math.min( info.minAltitude );
 					info.maxAltitude = Math.max( info.maxAltitude );
 
-					if ( onDetected ) {
+					if ( onAltitudeChange ) {
 
-						onDetected( info.minAltitude, info.maxAltitude, shape );
+						onAltitudeChange( info.minAltitude, info.maxAltitude, shape );
 
 					}
 

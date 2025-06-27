@@ -113,7 +113,7 @@ export function TileFlatteningShape( props ) {
 
 		}
 
-		// TODO: this hash change is causing things to run twice
+		// TODO: this hash change is causing things to run twice initially
 		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
 		if ( hash !== newHash ) {
 

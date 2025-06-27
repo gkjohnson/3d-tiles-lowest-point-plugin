@@ -4,10 +4,28 @@ import { AltitudeDetectionPlugin as AltitudeDetectionPluginImpl } from '../../sr
 import { Box3, Matrix4, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 
-const _matrix = /* @__PURE__ */ new Matrix4();
-
 // NOTE: The flattening shape will not automatically update when child transforms are adjusted so in order
 // to force a remount of the component the use should modify a "key" property when it needs to change.
+
+// construct a hash relative to a frame
+const _matrix = /* @__PURE__ */ new Matrix4();
+function objectHash( obj, matrix ) {
+
+	let hash = '';
+	obj.traverse( c => {
+
+		if ( c.geometry ) {
+
+			_matrix.copy( c.matrixWorld ).premultiply( matrix );
+			hash += c.geometry.uuid + '_' + c.matrixWorld.elements.join() + '_';
+
+		}
+
+	} );
+
+	return hash;
+
+}
 
 // Helper class for adding a flattening shape to the scene
 export function AltitudeDetectionShape( props ) {
@@ -31,7 +49,7 @@ export function AltitudeDetectionShape( props ) {
 	} = props;
 
 	const [ group, setGroup ] = useState( null );
-	const [ flatteningHandle, setFlatteningHandle ] = useState( null );
+	const [ hash, setHash ] = useState( null );
 
 	// Add the provided shape to the tile set
 	useEffect( () => {
@@ -45,7 +63,6 @@ export function AltitudeDetectionShape( props ) {
 		// ensure world transforms are up to date
 		tiles.group.updateMatrixWorld();
 		group.updateMatrixWorld( true );
-		group.update
 
 		const relativeGroup = group.clone()
 		relativeGroup
@@ -75,7 +92,6 @@ export function AltitudeDetectionShape( props ) {
 
 		// add a shape to the plugin
 		plugin.addShape( relativeGroup, _direction, threshold );
-		setFlatteningHandle( relativeGroup );
 
 		return () => {
 
@@ -83,26 +99,22 @@ export function AltitudeDetectionShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold ] );
+	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold, hash ] );
 
+	// detect if the object transform or geometry has changed
 	useFrame( () => {
 
-		console.log('TEST')
-		if ( ! tiles || ! group || ! flatteningHandle ) {
+		if ( ! tiles || ! group ) {
 
 			return;
 
 		}
 
-		console.log('GOT')
-		_matrix
-			.copy( group.matrixWorld )
-			.premultiply( tiles.group.matrixWorldInverse )
-			.decompose( relativeGroup.position, relativeGroup.quaternion, relativeGroup.scale );
+		// TODO: this hash change is causing things to run twice
+		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
+		if ( hash !== newHash ) {
 
-		if ( ! _matrix.equals( flatteningHandle.matrixWorld ) ) {
-
-			console.log('ENDING')
+			setHash( newHash );
 
 		}
 
