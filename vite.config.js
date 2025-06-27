@@ -1,4 +1,4 @@
-import { searchForWorkspaceRoot, loadEnv } from 'vite';
+import { searchForWorkspaceRoot, loadEnv, optimizeDeps } from 'vite';
 import fs from 'fs';
 import react from '@vitejs/plugin-react';
 
@@ -16,11 +16,13 @@ export default ( { mode } ) => {
 			rollupOptions: {
 				input: [
 					...fs.readdirSync( './example/' ),
-					...fs.readdirSync( './example/r3f/' ).map( name => 'r3f/' + name ),
 				]
 					.filter( p => /\.html$/.test( p ) )
 					.map( p => `./example/${ p }` ),
 			},
+		},
+		optimizeDeps: {
+			exclude: [ '3d-tiles-renderer' ],
 		},
 		server: {
 			fs: {
