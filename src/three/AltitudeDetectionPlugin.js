@@ -1,5 +1,4 @@
 import { Matrix4, Sphere, Triangle, Vector3 } from 'three';
-import { OBB } from '3d-tiles-renderer';
 
 const _matrix = /* @__PURE__ */ new Matrix4();
 const _raycaster = /* @__PURE__ */ new Raycaster();

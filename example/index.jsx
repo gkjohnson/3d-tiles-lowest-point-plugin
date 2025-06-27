@@ -35,7 +35,7 @@ function App() {
 			camera={ {
 				position: [ 0, 1e3, 1e3 ],
 				near: 1,
-				far: 1e6,
+				far: 1e5,
 			} }
 			style={ {
 				width: '100%',
@@ -60,13 +60,13 @@ function App() {
 					- Fix the flattening plug int work if the ENU frame is wrapped outside
 				*/}
 				<TileFlatteningPlugin>
-					<TileFlatteningShape relativeToEllipsoid>
-						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ - 20 }>
+					<EastNorthUpFrame lat={ LAT } lon={ LON } height={ - 20 }>
+						<TileFlatteningShape relativeToEllipsoid>
 							<mesh scale={ 500 }>
 								<planeGeometry />
 							</mesh>
-						</EastNorthUpFrame>
-					</TileFlatteningShape>
+						</TileFlatteningShape>
+					</EastNorthUpFrame>
 				</TileFlatteningPlugin>
 
 
