@@ -14,7 +14,8 @@ Available options are as follows:
 
 ```js
 {
-	// Callbacks that fire when the associated altitudes change
+	// Callbacks that fire when the associated altitudes change. The altitude value and point are relative to the
+	// origin of the TilesRenderer.group frame.
 	onMinAltitudeChange = null : ( altitude: number, point: Vector3, shape: Object3D ) => void,
 	onMaxAltitudeChange = null : ( altitude: number, point: Vector3, shape: Object3D ) => void,
 

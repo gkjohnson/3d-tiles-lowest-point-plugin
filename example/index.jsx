@@ -92,10 +92,12 @@ function App() {
 			} }
 			flat
 		>
+			{/* Set up lighting */}
 			<color attach="background" args={ [ 0x111111 ] } />
 			<ambientLight />
 			<directionalLight position={ [ 1, 2, 3 ] } />
 
+			{/* Add trees */}
 			{
 				treePositions.map( ( pos, i ) => {
 
@@ -104,6 +106,7 @@ function App() {
 				} )
 			}
 
+			{/* Add plane visualization */}
 			<mesh scale={ PLANE_SIZE } rotation-x={ - Math.PI / 2 }>
 				<planeGeometry />
 				<meshBasicMaterial
@@ -117,6 +120,7 @@ function App() {
 				/>
 			</mesh>
 
+			{/* Tiles */}
 			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles }>
 
 				{/* Sphere shows where the detected minimum point is */}
@@ -132,6 +136,7 @@ function App() {
 				<TilesPlugin plugin={ TileCompressionPlugin } />
 				<TilesPlugin plugin={ TilesFadePlugin } />
 
+				{/* flattening */}
 				<TileFlatteningPlugin>
 					<TileFlatteningShape relativeToEllipsoid>
 						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ height }>
@@ -142,6 +147,7 @@ function App() {
 					</TileFlatteningShape>
 				</TileFlatteningPlugin>
 
+				{/* altitude detection */}
 				<AltitudeDetectionPlugin useTriangleCenters ref={ plugin => {
 
 					// TODO: the plugin component needs to be modified to support setting of on* functions if the
