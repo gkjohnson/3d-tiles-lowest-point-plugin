@@ -27,7 +27,7 @@ function objectHash( obj ) {
 
 		c.matrix.elements.forEach( v => {
 
-			hash += v.toFixed( 10 ) + ',';
+			hash += v.toFixed( 6 ) + ',';
 
 		} );
 

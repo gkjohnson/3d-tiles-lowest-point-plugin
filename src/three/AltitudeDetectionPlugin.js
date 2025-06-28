@@ -45,7 +45,7 @@ export class AltitudeDetectionPlugin {
             onMinAltitudeChange = null,
             onMaxAltitudeChange = null,
 			angleThreshold = 35 * MathUtils.DEG2RAD,
-			useTriangleCenters = true,
+			useTriangleCenters = false,
         } = options;
 
         // make sure this runs before any flattening plugin

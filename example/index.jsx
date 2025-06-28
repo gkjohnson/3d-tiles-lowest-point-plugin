@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BoxGeometry, MathUtils } from 'three';
+import { BoxGeometry, MathUtils, SphereGeometry } from 'three';
+
 // TilesRenderer, controls and attribution imports
 import {
 	TilesPlugin,
@@ -28,7 +29,7 @@ import { AltitudeDetectionPlugin, AltitudeDetectionShape } from '../src/r3f/Alti
 const dracoLoader = new DRACOLoader().setDecoderPath( 'https://www.gstatic.com/draco/v1/decoders/' );
 const LAT = 35.6586 * MathUtils.DEG2RAD;
 const LON = 139.7454 * MathUtils.DEG2RAD;
-const PLANE_SIZE = 250;
+const PLANE_SIZE = 500;
 
 function Tree( props ) {
 
@@ -71,6 +72,7 @@ function App() {
 
 	const [ height, setHeight ] = useState( 0 );
 	const [ tiles, setTiles ] = useState( null );
+	const [ lowPoint, setLowPoint ] = useState( null );
 
 	return (
 		<Canvas
@@ -109,7 +111,7 @@ function App() {
 					polygonOffset
 					polygonOffsetFactor={ - 1 }
 					polygonOffsetUnits={ - 1 }
-					opacity={ 0.35 }
+					opacity={ 0.25 }
 					depthWrite={ false }
 					transparent
 				/>
@@ -117,6 +119,13 @@ function App() {
 
 			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles }>
 
+				{/* Sphere shows where the detected minimum point is */}
+				<mesh scale={ 5 } ref={ setLowPoint }>
+					<sphereGeometry />
+					<meshBasicMaterial color={ 0xff0000 } />
+				</mesh>
+
+				{/* plugins */}
 				<TilesPlugin plugin={ CesiumIonAuthPlugin } args={ { apiToken: import.meta.env.VITE_ION_KEY, assetId: '2275207', autoRefreshToken: true } } />
 				<TilesPlugin plugin={ GLTFExtensionsPlugin } dracoLoader={ dracoLoader } />
 				<TilesPlugin plugin={ ReorientationPlugin } lat={ LAT } lon={ LON } height={ height } key={ height } />
@@ -133,18 +142,16 @@ function App() {
 					</TileFlatteningShape>
 				</TileFlatteningPlugin>
 
-				<AltitudeDetectionPlugin ref={ plugin => {
+				<AltitudeDetectionPlugin useTriangleCenters ref={ plugin => {
 
 					// TODO: the plugin component needs to be modified to support setting of on* functions if the
 					// event listener function doesn't exist and / or the field exists
 					plugin.onMinAltitudeChange = ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
-						if ( Math.abs( height - cart.height ) > 0.1 ) {
+						setHeight( cart.height );
 
-							setHeight( cart.height );
-
-						}
+						lowPoint.position.copy( point );
 
 					};
 
