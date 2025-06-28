@@ -77,24 +77,24 @@ react-three-fiber Wrapper for "AltitudeDetectionPlugin":
 */ }
 <AltitudeDetectionPlugin>
 
-	{ /*
-		Shape within which vertex altitudes are detected.
-		- "relativeToEllipsoid": If "true" then the detection direction is automatically derived from the shape.
-		- "visible": If "true" then the shape will be visible. Useful for debugging
-	*/ }
-	<AltitudeDetectionShape relativeToEllipsoid>
+  { /*
+    Shape within which vertex altitudes are detected.
+    - "relativeToEllipsoid": If "true" then the detection direction is automatically derived from the shape.
+    - "visible": If "true" then the shape will be visible. Useful for debugging
+  */ }
+  <AltitudeDetectionShape relativeToEllipsoid>
 
-		{ /*
-			Any objects, meshes, and transforms nested in the detection shapes are implicitly transformed into the
-			local frame of the tiles renderer and registered with the plugin.
-		*/ }
-		<EastNorthUpFrame lat={ latitude } lon={ longitude } height={ height }>
-			<mesh scale={ 500 }>
-				<planeGeometry />
-			</mesh>
-		</EastNorthUpFrame>
+    { /*
+      Any objects, meshes, and transforms nested in the detection shapes are implicitly transformed into the
+      local frame of the tiles renderer and registered with the plugin.
+    */ }
+    <EastNorthUpFrame lat={ latitude } lon={ longitude } height={ height }>
+      <mesh scale={ 500 }>
+        <planeGeometry />
+      </mesh>
+    </EastNorthUpFrame>
 
-	</AltitudeDetectionShape>
+  </AltitudeDetectionShape>
 
 </AltitudeDetectionPlugin>
 ```
