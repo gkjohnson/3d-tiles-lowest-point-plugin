@@ -34,7 +34,8 @@ export class AltitudeDetectionPlugin {
     constructor( options ) {
 
         const {
-            onAltitudeChange = null,
+            onMinAltitudeChange = null,
+            onMaxAltitudeChange = null,
         } = options;
 
         // make sure this runs before any flattening plugin
@@ -42,7 +43,8 @@ export class AltitudeDetectionPlugin {
         this.priority = - 1000;
 
         // options
-        this.onAltitudeChange = onAltitudeChange;
+        this.onMinAltitudeChange = onMinAltitudeChange;
+        this.onMaxAltitudeChange = onMaxAltitudeChange;
 
         // local
         this.shapes = new Map();
@@ -62,8 +64,8 @@ export class AltitudeDetectionPlugin {
 
 				this.shapes.forEach( info => {
 
-					info.minAltitude = Infinity;
-					info.maxAltitude = - Infinity;
+					info.result.minAltitude = Infinity;
+					info.result.maxAltitude = - Infinity;
 
 				} );
 
@@ -102,7 +104,7 @@ export class AltitudeDetectionPlugin {
 	// private
 	_checkScene( tile ) {
 
-		const { shapes, originalMeshes, onAltitudeChange } = this;
+		const { shapes, originalMeshes, onMinAltitudeChange, onMaxAltitudeChange } = this;
 
 		const scene = originalMeshes.get( tile );
 		scene.updateMatrixWorld( true );
@@ -135,6 +137,7 @@ export class AltitudeDetectionPlugin {
 					shape,
 					direction,
 					sphere,
+					result,
 				} = info;
 
 				// check if the spheres overlap so there may actually be potential of geometry overlap
@@ -154,8 +157,8 @@ export class AltitudeDetectionPlugin {
 				_dir.copy( direction ).transformDirection( _invMatrix ).normalize();
 				ray.direction.copy( direction ).multiplyScalar( - 1 );
 
-				let minAltitude = Infinity;
-				let maxAltitude = - Infinity;
+				let didMinChange = false;
+				let didMaxChange = false;
 				forEachTriangleIndices( geometry, ( i0, i1, i2 ) => {
 
 					_triangle.a.fromBufferAttribute( position, i0 );
@@ -163,7 +166,8 @@ export class AltitudeDetectionPlugin {
 					_triangle.c.fromBufferAttribute( position, i2 );
 					_triangle.getNormal( _normal );
 
-					// avoid skirt triangles
+					// avoid skirt triangles by skipping any points from triangles that
+					// are orthogonal to the altitude check direction
 					if ( Math.abs( _dir.dot( _normal ) ) < 0.1 ) {
 
 						return;
@@ -179,23 +183,38 @@ export class AltitudeDetectionPlugin {
 					if ( hit ) {
 
 						const altitude = hit.point.dot( ray.direction );
-						minAltitude = Math.min( minAltitude, altitude );
-						maxAltitude = Math.max( maxAltitude, altitude );
+						const minAltitude = Math.min( minAltitude, altitude );
+						const maxAltitude = Math.max( maxAltitude, altitude );
+
+						if ( minAltitude < result.minAltitude ) {
+
+							didMinChange = true;
+							result.minAltitude = minAltitude;
+							result.minPoint.copy( hit.point );
+
+						}
+
+						if ( maxAltitude < result.maxAltitude ) {
+
+							didMaxChange = true;
+							result.maxAltitude = maxAltitude;
+							result.maxPoint.copy( hit.point );
+
+						}
 
 					}
 
 				} );
 
-				if ( minAltitude < info.minAltitude || maxAltitude > info.maxAltitude ) {
+				if ( didMinChange ) {
 
-					info.minAltitude = Math.min( info.minAltitude );
-					info.maxAltitude = Math.max( info.maxAltitude );
+					onMinAltitudeChange( result.minAltitude, result.minPoint, shape );
 
-					if ( onAltitudeChange ) {
+				}
 
-						onAltitudeChange( info.minAltitude, info.maxAltitude, shape );
+				if ( didMaxChange ) {
 
-					}
+					onMaxAltitudeChange( result.maxAltitude, result.maxPoint, shape );
 
 				}
 
@@ -231,8 +250,13 @@ export class AltitudeDetectionPlugin {
 			shape: shape,
 			direction: direction.clone(),
 			sphere: sphere,
-			minAltitude: Infinity,
-			maxAltitude: - Infinity,
+			result: {
+				minPoint: new Vector3(),
+				minAltitude: Infinity,
+
+				maxPoint: new Vector3(),
+				maxAltitude: - Infinity,
+			},
 		} );
 
         this.needsUpdate = true;

@@ -17,7 +17,12 @@ function objectHash( obj, matrix ) {
 		if ( c.geometry ) {
 
 			_matrix.copy( c.matrixWorld ).premultiply( matrix );
-			hash += c.geometry.uuid + '_' + c.matrixWorld.elements.join() + '_';
+			hash += c.geometry.uuid + '_';
+			c.matrixWorld.elements.forEach( v => {
+
+				hash += Math.floor( v * 1e6 ) + ',';
+
+			} );
 
 		}
 

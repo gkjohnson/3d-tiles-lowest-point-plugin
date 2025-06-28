@@ -1,7 +1,7 @@
-import { forwardRef, useContext, useEffect, useState } from 'react';
+import { forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 import { TilesPlugin, TilesPluginContext, TilesRendererContext } from '3d-tiles-renderer/r3f';
 import { TileFlatteningPlugin as TileFlatteningPluginImpl } from '../../src/three/TileFlatteningPlugin.js';
-import { Box3, Matrix4, Vector3 } from 'three';
+import { Box3, Group, Matrix4, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 
 // NOTE: The flattening shape will not automatically update when child geometry vertices are adjusted so in order
@@ -17,7 +17,12 @@ function objectHash( obj, matrix ) {
 		if ( c.geometry ) {
 
 			_matrix.copy( c.matrixWorld ).premultiply( matrix );
-			hash += c.geometry.uuid + '_' + c.matrixWorld.elements.join() + '_';
+			hash += c.geometry.uuid + '_';
+			c.matrixWorld.elements.forEach( v => {
+
+				hash += Math.floor( v * 1e6 ) + ',';
+
+			} );
 
 		}
 
@@ -54,6 +59,12 @@ export function TileFlatteningShape( props ) {
 	const [ group, setGroup ] = useState( null );
 	const [ hash, setHash ] = useState( null );
 
+	const relativeGroup = useMemo( () => {
+
+		return new Group();
+
+	}, [] );
+
 	// Add the provided shape to the tile set
 	useEffect( () => {
 
@@ -67,8 +78,8 @@ export function TileFlatteningShape( props ) {
 		tiles.group.updateMatrixWorld();
 		group.updateMatrixWorld( true );
 
-		const relativeGroup = group.clone()
-		relativeGroup
+		const local = group.clone();
+		local
 			.matrixWorld
 			.copy( group.matrixWorld )
 			.premultiply( tiles.group.matrixWorldInverse )
@@ -83,7 +94,7 @@ export function TileFlatteningShape( props ) {
 		} else if ( relativeToEllipsoid ) {
 
 			const box = new Box3();
-			box.setFromObject( relativeGroup );
+			box.setFromObject( local );
 			box.getCenter( _direction );
 			tiles.ellipsoid.getPositionToNormal( _direction, _direction ).multiplyScalar( - 1 );
 
@@ -95,6 +106,7 @@ export function TileFlatteningShape( props ) {
 
 		// add a shape to the plugin
 		plugin.addShape( relativeGroup, _direction, threshold );
+		setHash( null );
 
 		return () => {
 
@@ -102,7 +114,7 @@ export function TileFlatteningShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold, hash ] );
+	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold ] );
 
 	// detect if the object transform or geometry has changed
 	useFrame( () => {
@@ -113,10 +125,20 @@ export function TileFlatteningShape( props ) {
 
 		}
 
-		// TODO: this hash change is causing things to run twice initially
+		group.updateMatrixWorld( true );
+
 		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
 		if ( hash !== newHash ) {
 
+			relativeGroup.clear();
+			relativeGroup.add( ...group.children.map( c => c.clone() ) );
+			relativeGroup
+				.matrixWorld
+				.copy( group.matrixWorld )
+				.premultiply( tiles.group.matrixWorldInverse )
+				.decompose( relativeGroup.position, relativeGroup.quaternion, relativeGroup.scale );
+
+			plugin.updateShape( relativeGroup );
 			setHash( newHash );
 
 		}

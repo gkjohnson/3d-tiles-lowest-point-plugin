@@ -264,22 +264,9 @@ export class TileFlatteningPlugin {
 
 		}
 
-		this.needsUpdate = true;
-
-		const info = this.shapes.get( mesh );
-		info.shape = mesh.clone();
-		info.shape.updateMatrixWorld( true );
-		info.shape.traverse( c => {
-
-			if ( c.material ) {
-
-				c.material = _doubleSidedMaterial;
-
-			}
-
-		} );
-
-		calculateSphere( info.shape, info.sphere );
+		const { direction, threshold } = this.shapes.get( mesh );
+		this.deleteShape( mesh );
+		this.addShape( mesh, direction, threshold );
 
 	}
 
