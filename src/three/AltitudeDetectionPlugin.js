@@ -1,4 +1,4 @@
-import { Matrix4, Sphere, Triangle, Vector3, Raycaster, Box3, MeshBasicMaterial, DoubleSide } from 'three';
+import { Matrix4, Sphere, Triangle, Vector3, Raycaster, Box3, MeshBasicMaterial, DoubleSide, MathUtils } from 'three';
 
 const _matrix = /* @__PURE__ */ new Matrix4();
 const _invMatrix = /* @__PURE__ */ new Matrix4();
@@ -8,7 +8,8 @@ const _normal = /* @__PURE__ */ new Vector3();
 const _dir = /* @__PURE__ */ new Vector3();
 const _box = /* @__PURE__ */ new Box3();
 const _sphere = /* @__PURE__ */ new Sphere();
-const _vec = /* @__PURE__ */ new Vector3();
+const _vertex = /* @__PURE__ */ new Vector3();
+const _center = /* @__PURE__ */ new Vector3();
 const _doubleSidedMaterial = /* @__PURE__ */ new MeshBasicMaterial( { side: DoubleSide } );
 
 const RAYCAST_DISTANCE = 1e5;
@@ -43,6 +44,8 @@ export class AltitudeDetectionPlugin {
         const {
             onMinAltitudeChange = null,
             onMaxAltitudeChange = null,
+			angleThreshold = 35 * MathUtils.DEG2RAD,
+			useTriangleCenters = true,
         } = options;
 
         // make sure this runs before any flattening plugin
@@ -52,6 +55,8 @@ export class AltitudeDetectionPlugin {
         // callbacks for when values change
         this.onMinAltitudeChange = onMinAltitudeChange;
         this.onMaxAltitudeChange = onMaxAltitudeChange;
+		this.angleThreshold = angleThreshold;
+		this.useTriangleCenters = useTriangleCenters;
 
         // local
         this.shapes = new Map();
@@ -121,8 +126,9 @@ export class AltitudeDetectionPlugin {
 	// private
 	_checkScene( tile ) {
 
-		const { shapes, originalMeshes, tiles, onMinAltitudeChange, onMaxAltitudeChange } = this;
+		const { shapes, originalMeshes, tiles, angleThreshold, useTriangleCenters, onMinAltitudeChange, onMaxAltitudeChange } = this;
 
+		const dotThreshold = Math.cos( angleThreshold );
 		const checkedVertices = new Set();
 		const scene = originalMeshes.get( tile );
 		scene.updateMatrixWorld( true );
@@ -159,11 +165,11 @@ export class AltitudeDetectionPlugin {
 				} = info;
 
 				// check if the spheres overlap so there may actually be potential of geometry overlap
-				_vec.subVectors( _sphere.center, sphere.center );
-				_vec.addScaledVector( direction, - direction.dot( _vec ) );
+				_vertex.subVectors( _sphere.center, sphere.center );
+				_vertex.addScaledVector( direction, - direction.dot( _vertex ) );
 
 				const r2 = ( _sphere.radius + sphere.radius ) ** 2;
-				if ( _vec.lengthSq() > r2 ) {
+				if ( _vertex.lengthSq() > r2 ) {
 
 					return;
 
@@ -174,7 +180,6 @@ export class AltitudeDetectionPlugin {
 				const { position } = geometry.attributes;
 				const { ray } = _raycaster;
 				_dir.copy( direction ).transformDirection( _invMatrix ).normalize().multiplyScalar( - 1 );
-				ray.direction.copy( direction ).multiplyScalar( - 1 );
 
 				checkedVertices.clear();
 				forEachTriangleIndices( geometry, ( i0, i1, i2 ) => {
@@ -198,42 +203,84 @@ export class AltitudeDetectionPlugin {
 
 					// avoid skirt triangles by skipping any points from triangles that
 					// are orthogonal to the altitude check direction
-					const isSkirt = _dir.dot( _normal ) < 0.999;
+					if ( _dir.dot( _normal ) < 0.1 ) {
+
+						return;
+
+					}
 
 					// check each vertex
-					const indices = [ i0, i1, i2 ];
-					const verts = [ _triangle.a, _triangle.b, _triangle.c ];
-					for ( let i = 0; i < 3; i ++ ) {
+					let verts;
+					if ( useTriangleCenters ) {
 
-						// skip the vertex if we've already checked it
-						const index = indices[ i ];
+						_center
+							.set( 0, 0, 0 )
+							.addScaledVector( _triangle.a, 1 / 3 )
+							.addScaledVector( _triangle.b, 1 / 3 )
+							.addScaledVector( _triangle.c, 1 / 3 );
+						verts = [ _center ];
+
+					} else {
+
+						verts = [ _triangle.a, _triangle.b, _triangle.c ];
+
+					}
+
+					for ( let i = 0, l = verts.length; i < l; i ++ ) {
+
+						// get the vertex in the world frame
 						const vert = verts[ i ];
-						if ( checkedVertices.has( index ) ) {
+						_vertex.copy( vert ).applyMatrix4( _matrix );
+
+						// if the altitude of this vertex is not an extremity then skip
+						const altitude = - _vertex.dot( direction );
+						if ( altitude > result.minAltitude && altitude < result.maxAltitude ) {
 
 							continue;
 
 						}
 
-						checkedVertices.add( index );
+						// set the raycaster to check upwards towards the shape
+						ray.origin.copy( _vertex ).addScaledVector( direction, RAYCAST_DISTANCE );
+						ray.direction.copy( direction ).multiplyScalar( - 1 );
 
-						// prepare the raycast origin
-						ray.origin
-							.copy( vert )
-							.applyMatrix4( _matrix )
-							.addScaledVector( direction, RAYCAST_DISTANCE );
-
-						// calculate the altitude
+						// check if the point is in the shape
 						const hit = _raycaster.intersectObject( shape )[ 0 ];
 						if ( hit ) {
 
-							hit.point.copy( vert ).applyMatrix4( _matrix );
+							// set the raycaster to check downwards towards the tile geometry to see if there is
+							// any other geometry in the way of this vertex
+							ray.origin.copy( _vertex ).addScaledVector( direction, - RAYCAST_DISTANCE );
+							ray.direction.copy( direction );
 
-							const altitude = hit.point.dot( ray.direction );
-							if ( altitude < result.minAltitude && ! isSkirt ) {
+							const hit = _raycaster.intersectObject( c )[ 0 ];
+							let point, normal;
+							if ( hit ) {
+
+								point = hit.point;
+								normal = hit.face.normal;
+
+							} else {
+
+								point = _vertex;
+								normal = _normal;
+								continue
+
+							}
+
+							if ( normal.dot( _dir ) < dotThreshold ) {
+
+								continue;
+
+							}
+
+							// if we hit a surface then use that point as the point for calculating altitudes
+							const altitude = - point.dot( direction );
+							if ( altitude < result.minAltitude ) {
 
 								result.minNeedsDispatch = true;
 								result.minAltitude = altitude;
-								result.minPoint.copy( hit.point );
+								result.minPoint.copy( point );
 
 							}
 
@@ -241,7 +288,7 @@ export class AltitudeDetectionPlugin {
 
 								result.maxNeedsDispatch = true;
 								result.maxAltitude = altitude;
-								result.maxPoint.copy( hit.point );
+								result.maxPoint.copy( point );
 
 							}
 

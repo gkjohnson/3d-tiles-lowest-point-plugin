@@ -69,7 +69,7 @@ function App() {
 
 	}, [] );
 
-	const [ height, setHeight ] = useState( 50 );
+	const [ height, setHeight ] = useState( 0 );
 	const [ tiles, setTiles ] = useState( null );
 
 	return (

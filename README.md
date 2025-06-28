@@ -17,6 +17,13 @@ Available options are as follows:
 	// Callbacks that fire when the associated altitudes change
 	onMinAltitudeChange = null : ( altitude: number, point: Vector3, shape: Object3D ) => void,
 	onMaxAltitudeChange = null : ( altitude: number, point: Vector3, shape: Object3D ) => void,
+
+	// Angle threshold between the altitude measurement direction and face such that a point will be rejected if
+	// the angle is outside of this value.
+	angleThreshold = 35 * MathUtils.DEG2RAD : number,
+
+	// If "true" then the altitude detection will sample the triangle centers rather than the corner vertices
+	useTriangleCenters = false : boolean,
 }
 ```
 
