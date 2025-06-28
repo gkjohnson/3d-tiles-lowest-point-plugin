@@ -1,5 +1,14 @@
 # 3d-tiles-lowest-point-plugin
 
+## Running
+
+- Create a `.env` file with `VITE_ION_KEY` variable set to the users Cesium Ion key.
+- Run "npm install" in the root.
+- Run "npm start" in the root.
+- Visit "localhost:5173"
+
+## API
+
 ### AltitudeDetectionPlugin
 
 Plugin for detecting the minimum and maximum altitudes in a given range as determined by raycasting against a 3d shape.

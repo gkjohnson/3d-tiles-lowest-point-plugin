@@ -78,7 +78,7 @@ function App() {
 		<Canvas
 			frameloop='demand'
 			camera={ {
-				position: [ 0, 1e3, 1e3 ],
+				position: [ 0, 0.5 * 1e3, 1e3 ],
 				near: 1,
 				far: 1e5,
 			} }
