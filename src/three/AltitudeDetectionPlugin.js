@@ -1,10 +1,16 @@
-import { Matrix4, Sphere, Triangle, Vector3 } from 'three';
+import { Matrix4, Sphere, Triangle, Vector3, Raycaster, Box3, MeshBasicMaterial, DoubleSide } from 'three';
 
 const _matrix = /* @__PURE__ */ new Matrix4();
+const _invMatrix = /* @__PURE__ */ new Matrix4();
 const _raycaster = /* @__PURE__ */ new Raycaster();
 const _triangle = /* @__PURE__ */ new Triangle();
 const _normal = /* @__PURE__ */ new Vector3();
 const _dir = /* @__PURE__ */ new Vector3();
+const _box = /* @__PURE__ */ new Box3();
+const _sphere = /* @__PURE__ */ new Sphere();
+const _vec = /* @__PURE__ */ new Vector3();
+const _doubleSidedMaterial = /* @__PURE__ */ new MeshBasicMaterial( { side: DoubleSide } );
+
 const RAYCAST_DISTANCE = 1e5;
 
 function calculateSphere( object, target ) {
@@ -31,7 +37,7 @@ function calculateSphere( object, target ) {
 
 export class AltitudeDetectionPlugin {
 
-    constructor( options ) {
+    constructor( options = {} ) {
 
         const {
             onMinAltitudeChange = null,
@@ -75,6 +81,8 @@ export class AltitudeDetectionPlugin {
 
 				} );
 
+				this.needsUpdate = false;
+
 			}
 
 		};
@@ -89,7 +97,7 @@ export class AltitudeDetectionPlugin {
 
 	}
 
-	disposeTile() {
+	disposeTile( tile ) {
 
 		this.originalMeshes.delete( tile );
 
@@ -215,21 +223,18 @@ export class AltitudeDetectionPlugin {
 						if ( hit ) {
 
 							const altitude = hit.point.dot( ray.direction );
-							const minAltitude = Math.min( minAltitude, altitude );
-							const maxAltitude = Math.max( maxAltitude, altitude );
-
-							if ( minAltitude < result.minAltitude ) {
+							if ( altitude < result.minAltitude ) {
 
 								didMinChange = true;
-								result.minAltitude = minAltitude;
+								result.minAltitude = altitude;
 								result.minPoint.copy( hit.point );
 
 							}
 
-							if ( maxAltitude > result.maxAltitude ) {
+							if ( altitude > result.maxAltitude ) {
 
 								didMaxChange = true;
-								result.maxAltitude = maxAltitude;
+								result.maxAltitude = altitude;
 								result.maxPoint.copy( hit.point );
 
 							}
@@ -241,13 +246,13 @@ export class AltitudeDetectionPlugin {
 				} );
 
 				// dispatch events
-				if ( didMinChange ) {
+				if ( didMinChange && onMinAltitudeChange ) {
 
 					onMinAltitudeChange( result.minAltitude, result.minPoint, shape );
 
 				}
 
-				if ( didMaxChange ) {
+				if ( didMaxChange && onMaxAltitudeChange ) {
 
 					onMaxAltitudeChange( result.maxAltitude, result.maxPoint, shape );
 

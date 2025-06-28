@@ -1,7 +1,7 @@
 import { forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 import { TilesPlugin, TilesPluginContext, TilesRendererContext } from '3d-tiles-renderer/r3f';
 import { AltitudeDetectionPlugin as AltitudeDetectionPluginImpl } from '../../src/three/AltitudeDetectionPlugin.js';
-import { Box3, Matrix4, Vector3 } from 'three';
+import { Box3, Matrix4, Vector3, Group } from 'three';
 import { useFrame } from '@react-three/fiber';
 
 // NOTE: The flattening shape will not automatically update when child transforms are adjusted so in order
@@ -111,7 +111,7 @@ export function AltitudeDetectionShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, hash ] );
+	}, [ group, tiles, plugin, direction, relativeToEllipsoid ] );
 
 	// detect if the object transform or geometry has changed
 	useFrame( () => {
