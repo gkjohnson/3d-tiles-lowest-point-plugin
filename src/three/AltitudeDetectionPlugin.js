@@ -35,6 +35,7 @@ function calculateSphere( object, target ) {
 
 }
 
+// Plugin for detecting the highest and lowest altitude associated with a tile set in a region
 export class AltitudeDetectionPlugin {
 
     constructor( options = {} ) {
@@ -48,7 +49,7 @@ export class AltitudeDetectionPlugin {
         this.name = 'MIN_ALTITUDE_DETECTION_PLUGIN';
         this.priority = - 1000;
 
-        // options
+        // callbacks for when values change
         this.onMinAltitudeChange = onMinAltitudeChange;
         this.onMaxAltitudeChange = onMaxAltitudeChange;
 
@@ -87,6 +88,7 @@ export class AltitudeDetectionPlugin {
 
 		};
 
+		// save the original meshes because they can be modified by other plugins like flattening
 		tiles.forEachLoadedModel( ( scene, tile ) => {
 
 			this.originalMeshes.set( tile, scene.clone() );
@@ -174,8 +176,6 @@ export class AltitudeDetectionPlugin {
 				_dir.copy( direction ).transformDirection( _invMatrix ).normalize().multiplyScalar( - 1 );
 				ray.direction.copy( direction ).multiplyScalar( - 1 );
 
-				let didMinChange = false;
-				let didMaxChange = false;
 				checkedVertices.clear();
 				forEachTriangleIndices( geometry, ( i0, i1, i2 ) => {
 
@@ -198,11 +198,7 @@ export class AltitudeDetectionPlugin {
 
 					// avoid skirt triangles by skipping any points from triangles that
 					// are orthogonal to the altitude check direction
-					if ( _dir.dot( _normal ) < 0.999 ) {
-
-						return;
-
-					}
+					const isSkirt = _dir.dot( _normal ) < 0.999;
 
 					// check each vertex
 					const indices = [ i0, i1, i2 ];
@@ -233,7 +229,7 @@ export class AltitudeDetectionPlugin {
 							hit.point.copy( vert ).applyMatrix4( _matrix );
 
 							const altitude = hit.point.dot( ray.direction );
-							if ( altitude < result.minAltitude ) {
+							if ( altitude < result.minAltitude && ! isSkirt ) {
 
 								result.minNeedsDispatch = true;
 								result.minAltitude = altitude;
@@ -367,6 +363,7 @@ export class AltitudeDetectionPlugin {
 
 }
 
+// iterate over each triangle in the model
 function forEachTriangleIndices( geometry, callback ) {
 
 	const { index, attributes } = geometry;
