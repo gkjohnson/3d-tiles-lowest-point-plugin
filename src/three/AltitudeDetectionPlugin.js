@@ -87,6 +87,12 @@ export class AltitudeDetectionPlugin {
 
 		};
 
+		tiles.forEachLoadedModel( ( scene, tile ) => {
+
+			this.originalMeshes.set( tile, scene.clone() );
+
+		} );
+
 		tiles.addEventListener( 'update-after', this._onUpdateAfter );
 
     }
@@ -94,6 +100,7 @@ export class AltitudeDetectionPlugin {
 	processTileModel( scene, tile ) {
 
 		this.originalMeshes.set( tile, scene.clone() );
+		this._checkScene( tile );
 
 	}
 
@@ -105,14 +112,14 @@ export class AltitudeDetectionPlugin {
 
     dispose(){
 
-		tiles.removeEventListener( 'update-after', this._onUpdateAfter );
+		this.tiles.removeEventListener( 'update-after', this._onUpdateAfter );
 
     }
 
 	// private
 	_checkScene( tile ) {
 
-		const { shapes, originalMeshes, onMinAltitudeChange, onMaxAltitudeChange } = this;
+		const { shapes, originalMeshes, tiles, onMinAltitudeChange, onMaxAltitudeChange } = this;
 
 		const checkedVertices = new Set();
 		const scene = originalMeshes.get( tile );
@@ -160,10 +167,11 @@ export class AltitudeDetectionPlugin {
 
 				}
 
+
 				// iterate over every vertex position
 				const { position } = geometry.attributes;
 				const { ray } = _raycaster;
-				_dir.copy( direction ).transformDirection( _invMatrix ).normalize();
+				_dir.copy( direction ).transformDirection( _invMatrix ).normalize().multiplyScalar( - 1 );
 				ray.direction.copy( direction ).multiplyScalar( - 1 );
 
 				let didMinChange = false;
@@ -190,7 +198,7 @@ export class AltitudeDetectionPlugin {
 
 					// avoid skirt triangles by skipping any points from triangles that
 					// are orthogonal to the altitude check direction
-					if ( Math.abs( _dir.dot( _normal ) ) < 0.1 ) {
+					if ( _dir.dot( _normal ) < 0.999 ) {
 
 						return;
 
@@ -222,10 +230,12 @@ export class AltitudeDetectionPlugin {
 						const hit = _raycaster.intersectObject( shape )[ 0 ];
 						if ( hit ) {
 
+							hit.point.copy( vert ).applyMatrix4( _matrix );
+
 							const altitude = hit.point.dot( ray.direction );
 							if ( altitude < result.minAltitude ) {
 
-								didMinChange = true;
+								result.minNeedsDispatch = true;
 								result.minAltitude = altitude;
 								result.minPoint.copy( hit.point );
 
@@ -233,7 +243,7 @@ export class AltitudeDetectionPlugin {
 
 							if ( altitude > result.maxAltitude ) {
 
-								didMaxChange = true;
+								result.maxNeedsDispatch = true;
 								result.maxAltitude = altitude;
 								result.maxPoint.copy( hit.point );
 
@@ -245,16 +255,29 @@ export class AltitudeDetectionPlugin {
 
 				} );
 
-				// dispatch events
-				if ( didMinChange && onMinAltitudeChange ) {
+				if ( ! result.scheduled ) {
 
-					onMinAltitudeChange( result.minAltitude, result.minPoint, shape );
+					result.scheduled = true;
+					queueMicrotask( () => {
 
-				}
+						// dispatch events
+						if ( result.minNeedsDispatch && onMinAltitudeChange ) {
 
-				if ( didMaxChange && onMaxAltitudeChange ) {
+							onMinAltitudeChange( result.minAltitude, result.minPoint, shape );
 
-					onMaxAltitudeChange( result.maxAltitude, result.maxPoint, shape );
+						}
+
+						if ( result.maxNeedsDispatch && onMaxAltitudeChange ) {
+
+							onMaxAltitudeChange( result.maxAltitude, result.maxPoint, shape );
+
+						}
+
+						result.minNeedsDispatch = false;
+						result.maxNeedsDispatch = false;
+						result.scheduled = false;
+
+					} );
 
 				}
 
@@ -293,9 +316,13 @@ export class AltitudeDetectionPlugin {
 			result: {
 				minPoint: new Vector3(),
 				minAltitude: Infinity,
+				minNeedsDispatch: false,
 
 				maxPoint: new Vector3(),
 				maxAltitude: - Infinity,
+				maxNeedsDispatch: false,
+
+				scheduled: false,
 			},
 		} );
 

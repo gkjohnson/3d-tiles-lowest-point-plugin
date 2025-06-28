@@ -12,6 +12,8 @@ import {
 import {
 	CesiumIonAuthPlugin,
 	GLTFExtensionsPlugin,
+	TileCompressionPlugin,
+	TilesFadePlugin,
 } from '3d-tiles-renderer/plugins';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { Canvas } from '@react-three/fiber';
@@ -21,10 +23,12 @@ import { OrbitControls } from '@react-three/drei';
 
 import { TileFlatteningPlugin, TileFlatteningShape } from '../src/r3f/TileFlatteningPlugin.jsx';
 import { ReorientationPlugin } from '../src/three/ReorientationPlugin.js';
+import { AltitudeDetectionPlugin, AltitudeDetectionShape } from '../src/r3f/AltitudeDetectionPlugin.jsx';
 
 const dracoLoader = new DRACOLoader().setDecoderPath( 'https://www.gstatic.com/draco/v1/decoders/' );
 const LAT = 35.6586 * MathUtils.DEG2RAD;
 const LON = 139.7454 * MathUtils.DEG2RAD;
+const PLANE_SIZE = 250;
 
 function Tree( props ) {
 
@@ -57,26 +61,16 @@ function App() {
 
 	const treePositions = useMemo( () => {
 
-		return new Array( 100 ).fill().map( c => {
+		return new Array( 200 ).fill().map( c => {
 
-			return [ ( Math.random() - 0.5 ) * 500, 0, ( Math.random() - 0.5 ) * 500 ];
+			return [ ( Math.random() - 0.5 ) * PLANE_SIZE, 0, ( Math.random() - 0.5 ) * PLANE_SIZE ];
 
 		} );
 
 	}, [] );
 
 	const [ height, setHeight ] = useState( 50 );
-	useEffect( () => {
-
-		setTimeout( () => {
-
-			// setHeight( - 20 );
-
-		}, 5000 );
-
-	} );
-
-	// console.log('HERE' , height)
+	const [ tiles, setTiles ] = useState( null );
 
 	return (
 		<Canvas
@@ -103,25 +97,64 @@ function App() {
 			{
 				treePositions.map( ( pos, i ) => {
 
-					return <Tree scale={ 15 } position={ pos } key={ i } />
+					return <Tree scale={ 5 } position={ pos } scale-y={ 5 + ( i % 10 ) * 0.5 } key={ i } />
 
 				} )
 			}
 
-			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } }>
+			<mesh scale={ PLANE_SIZE } rotation-x={ - Math.PI / 2 }>
+				<planeGeometry />
+				<meshBasicMaterial
+					color={ 0 }
+					polygonOffset
+					polygonOffsetFactor={ - 1 }
+					polygonOffsetUnits={ - 1 }
+					opacity={ 0.35 }
+					depthWrite={ false }
+					transparent
+				/>
+			</mesh>
+
+			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles }>
+
 				<TilesPlugin plugin={ CesiumIonAuthPlugin } args={ { apiToken: import.meta.env.VITE_ION_KEY, assetId: '2275207', autoRefreshToken: true } } />
 				<TilesPlugin plugin={ GLTFExtensionsPlugin } dracoLoader={ dracoLoader } />
 				<TilesPlugin plugin={ ReorientationPlugin } lat={ LAT } lon={ LON } height={ height } key={ height } />
+				<TilesPlugin plugin={ TileCompressionPlugin } />
+				<TilesPlugin plugin={ TilesFadePlugin } />
 
 				<TileFlatteningPlugin>
-					<TileFlatteningShape relativeToEllipsoid visible>
+					<TileFlatteningShape relativeToEllipsoid>
 						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ height }>
-							<mesh scale={ 500 }>
+							<mesh scale={ PLANE_SIZE }>
 								<planeGeometry />
 							</mesh>
 						</EastNorthUpFrame>
 					</TileFlatteningShape>
 				</TileFlatteningPlugin>
+
+				<AltitudeDetectionPlugin ref={ plugin => {
+
+					plugin.onMinAltitudeChange = ( altitude, point ) => {
+
+						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
+						if ( Math.abs( height - cart.height ) > 0.1 ) {
+
+							setHeight( cart.height );
+
+						}
+
+					};
+
+				} }>
+					<AltitudeDetectionShape relativeToEllipsoid>
+						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ 100 }>
+							<mesh scale={ PLANE_SIZE }>
+								<planeGeometry />
+							</mesh>
+						</EastNorthUpFrame>
+					</AltitudeDetectionShape>
+				</AltitudeDetectionPlugin>
 
 
 				{/* Controls */}

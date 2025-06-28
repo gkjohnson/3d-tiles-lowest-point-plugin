@@ -8,23 +8,29 @@ import { useFrame } from '@react-three/fiber';
 // to force a remount of the component the use should modify a "key" property when it needs to change.
 
 // construct a hash relative to a frame
-const _matrix = /* @__PURE__ */ new Matrix4();
-function objectHash( obj, matrix ) {
+function objectHash( obj ) {
 
 	let hash = '';
 	obj.traverse( c => {
 
-		if ( c.geometry ) {
+		if ( c === obj ) {
 
-			_matrix.copy( c.matrixWorld ).premultiply( matrix );
-			hash += c.geometry.uuid + '_';
-			c.matrixWorld.elements.forEach( v => {
-
-				hash += Math.floor( v * 1e6 ) + ',';
-
-			} );
+			return;
 
 		}
+
+		if ( c.geometry ) {
+
+			hash += c.geometry.uuid + '_';
+
+		}
+
+		c.matrix.elements.forEach( v => {
+
+			hash += v.toFixed( 10 ) + ',';
+
+		} );
+
 
 	} );
 
@@ -122,9 +128,10 @@ export function AltitudeDetectionShape( props ) {
 
 		}
 
+		tiles.group.updateMatrixWorld( true );
 		group.updateMatrixWorld( true );
 
-		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
+		const newHash = objectHash( group );
 		if ( hash !== newHash ) {
 
 			relativeGroup.clear();

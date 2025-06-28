@@ -41,10 +41,6 @@ export class ReorientationPlugin {
 				// if the latitude and longitude are provided then remove the position offset
 				this.transformLatLonHeightToOrigin( lat, lon, height );
 
-				console.log('SETTING', height)
-
-				window.TILES = tiles;
-
 			} else {
 
 				const { ellipsoid } = tiles;
