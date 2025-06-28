@@ -106,6 +106,7 @@ export class AltitudeDetectionPlugin {
 
 		const { shapes, originalMeshes, onMinAltitudeChange, onMaxAltitudeChange } = this;
 
+		const checkedVertices = new Set();
 		const scene = originalMeshes.get( tile );
 		scene.updateMatrixWorld( true );
 		scene.traverse( c => {
@@ -159,8 +160,21 @@ export class AltitudeDetectionPlugin {
 
 				let didMinChange = false;
 				let didMaxChange = false;
+				checkedVertices.clear();
 				forEachTriangleIndices( geometry, ( i0, i1, i2 ) => {
 
+					// return early if we've already checked all the vertices
+					if (
+						checkedVertices.has( i0 ) &&
+						checkedVertices.has( i1 ) &&
+						checkedVertices.has( i2 )
+					) {
+
+						return;
+
+					}
+
+					// get the triangle
 					_triangle.a.fromBufferAttribute( position, i0 );
 					_triangle.b.fromBufferAttribute( position, i1 );
 					_triangle.c.fromBufferAttribute( position, i2 );
@@ -174,31 +188,51 @@ export class AltitudeDetectionPlugin {
 
 					}
 
-					ray.origin
-						.fromBufferAttribute( position, i )
-						.applyMatrix4( _matrix )
-						.addScaledVector( direction, RAYCAST_DISTANCE );
+					// check each vertex
+					const indices = [ i0, i1, i2 ];
+					const verts = [ _triangle.a, _triangle.b, _triangle.c ];
+					for ( let i = 0; i < 3; i ++ ) {
 
-					const hit = _raycaster.intersectObject( shape )[ 0 ];
-					if ( hit ) {
+						// skip the vertex if we've already checked it
+						const index = indices[ i ];
+						const vert = verts[ i ];
+						if ( checkedVertices.has( index ) ) {
 
-						const altitude = hit.point.dot( ray.direction );
-						const minAltitude = Math.min( minAltitude, altitude );
-						const maxAltitude = Math.max( maxAltitude, altitude );
-
-						if ( minAltitude < result.minAltitude ) {
-
-							didMinChange = true;
-							result.minAltitude = minAltitude;
-							result.minPoint.copy( hit.point );
+							continue;
 
 						}
 
-						if ( maxAltitude < result.maxAltitude ) {
+						checkedVertices.add( index );
 
-							didMaxChange = true;
-							result.maxAltitude = maxAltitude;
-							result.maxPoint.copy( hit.point );
+						// prepare the raycast origin
+						ray.origin
+							.copy( vert )
+							.applyMatrix4( _matrix )
+							.addScaledVector( direction, RAYCAST_DISTANCE );
+
+						// calculate the altitude
+						const hit = _raycaster.intersectObject( shape )[ 0 ];
+						if ( hit ) {
+
+							const altitude = hit.point.dot( ray.direction );
+							const minAltitude = Math.min( minAltitude, altitude );
+							const maxAltitude = Math.max( maxAltitude, altitude );
+
+							if ( minAltitude < result.minAltitude ) {
+
+								didMinChange = true;
+								result.minAltitude = minAltitude;
+								result.minPoint.copy( hit.point );
+
+							}
+
+							if ( maxAltitude > result.maxAltitude ) {
+
+								didMaxChange = true;
+								result.maxAltitude = maxAltitude;
+								result.maxPoint.copy( hit.point );
+
+							}
 
 						}
 
@@ -206,6 +240,7 @@ export class AltitudeDetectionPlugin {
 
 				} );
 
+				// dispatch events
 				if ( didMinChange ) {
 
 					onMinAltitudeChange( result.minAltitude, result.minPoint, shape );
@@ -265,27 +300,15 @@ export class AltitudeDetectionPlugin {
 
     updateShape( mesh ) {
 
-        if ( ! this.hasShape( mesh ) ) {
+		if ( ! this.hasShape( mesh ) ) {
 
-			throw new Error( 'TileFlatteningPlugin: Shape is already used.' );
+			throw new Error( 'TileFlatteningPlugin: Shape is not present.' );
 
 		}
 
-		const info = this.shapes.get( mesh );
-		calculateSphere( mesh, info.sphere );
-		info.shape = mesh.clone();
-		info.shape.updateMatrixWorld( true );
-		info.shape.traverse( c => {
-
-			if ( c.material ) {
-
-				c.material = _doubleSidedMaterial;
-
-			}
-
-		} );
-
-		this.needsUpdate = true;
+		const { direction } = this.shapes.get( mesh );
+		this.deleteShape( mesh );
+		this.addShape( mesh, direction );
 
     }
 

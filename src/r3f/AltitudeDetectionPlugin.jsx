@@ -56,6 +56,12 @@ export function AltitudeDetectionShape( props ) {
 	const [ group, setGroup ] = useState( null );
 	const [ hash, setHash ] = useState( null );
 
+	const relativeGroup = useMemo( () => {
+
+		return new Group();
+
+	}, [] );
+
 	// Add the provided shape to the tile set
 	useEffect( () => {
 
@@ -69,8 +75,8 @@ export function AltitudeDetectionShape( props ) {
 		tiles.group.updateMatrixWorld();
 		group.updateMatrixWorld( true );
 
-		const relativeGroup = group.clone()
-		relativeGroup
+		const local = group.clone();
+		local
 			.matrixWorld
 			.copy( group.matrixWorld )
 			.premultiply( tiles.group.matrixWorldInverse )
@@ -85,7 +91,7 @@ export function AltitudeDetectionShape( props ) {
 		} else if ( relativeToEllipsoid ) {
 
 			const box = new Box3();
-			box.setFromObject( relativeGroup );
+			box.setFromObject( local );
 			box.getCenter( _direction );
 			tiles.ellipsoid.getPositionToNormal( _direction, _direction ).multiplyScalar( - 1 );
 
@@ -96,7 +102,8 @@ export function AltitudeDetectionShape( props ) {
 		}
 
 		// add a shape to the plugin
-		plugin.addShape( relativeGroup, _direction, threshold );
+		plugin.addShape( relativeGroup, _direction );
+		setHash( null );
 
 		return () => {
 
@@ -104,7 +111,7 @@ export function AltitudeDetectionShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold, hash ] );
+	}, [ group, tiles, plugin, direction, relativeToEllipsoid, hash ] );
 
 	// detect if the object transform or geometry has changed
 	useFrame( () => {
@@ -115,10 +122,20 @@ export function AltitudeDetectionShape( props ) {
 
 		}
 
-		// TODO: this hash change is causing things to run twice
+		group.updateMatrixWorld( true );
+
 		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
 		if ( hash !== newHash ) {
 
+			relativeGroup.clear();
+			relativeGroup.add( ...group.children.map( c => c.clone() ) );
+			relativeGroup
+				.matrixWorld
+				.copy( group.matrixWorld )
+				.premultiply( tiles.group.matrixWorldInverse )
+				.decompose( relativeGroup.position, relativeGroup.quaternion, relativeGroup.scale );
+
+			plugin.updateShape( relativeGroup );
 			setHash( newHash );
 
 		}
