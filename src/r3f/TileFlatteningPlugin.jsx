@@ -131,10 +131,12 @@ export function TileFlatteningShape( props ) {
 
 		}
 
-		group.updateMatrixWorld( true );
-
+		// check if the object needs to updated
 		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
 		if ( hash !== newHash ) {
+
+			tiles.group.updateMatrixWorld( true );
+			group.updateMatrixWorld( true );
 
 			relativeGroup.clear();
 			relativeGroup.add( ...group.children.map( c => c.clone() ) );

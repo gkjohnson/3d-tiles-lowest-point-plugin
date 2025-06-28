@@ -62,6 +62,7 @@ export function AltitudeDetectionShape( props ) {
 	const [ group, setGroup ] = useState( null );
 	const [ hash, setHash ] = useState( null );
 
+	// Create the handle for updating the shape
 	const relativeGroup = useMemo( () => {
 
 		return new Group();
@@ -128,11 +129,12 @@ export function AltitudeDetectionShape( props ) {
 
 		}
 
-		tiles.group.updateMatrixWorld( true );
-		group.updateMatrixWorld( true );
-
+		// check if the object needs to updated
 		const newHash = objectHash( group );
 		if ( hash !== newHash ) {
+
+			tiles.group.updateMatrixWorld( true );
+			group.updateMatrixWorld( true );
 
 			relativeGroup.clear();
 			relativeGroup.add( ...group.children.map( c => c.clone() ) );
