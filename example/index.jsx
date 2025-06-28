@@ -135,6 +135,8 @@ function App() {
 
 				<AltitudeDetectionPlugin ref={ plugin => {
 
+					// TODO: the plugin component needs to be modified to support setting of on* functions if the
+					// event listener function doesn't exist and / or the field exists
 					plugin.onMinAltitudeChange = ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
@@ -155,7 +157,6 @@ function App() {
 						</EastNorthUpFrame>
 					</AltitudeDetectionShape>
 				</AltitudeDetectionPlugin>
-
 
 				{/* Controls */}
 				<OrbitControls />
