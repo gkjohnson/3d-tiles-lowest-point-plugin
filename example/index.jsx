@@ -15,6 +15,7 @@ import {
 	GLTFExtensionsPlugin,
 	TileCompressionPlugin,
 	TilesFadePlugin,
+	ReorientationPlugin,
 } from '3d-tiles-renderer/plugins';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { Canvas } from '@react-three/fiber';
@@ -23,7 +24,6 @@ import { OrbitControls } from '@react-three/drei';
 //
 
 import { TileFlatteningPlugin, TileFlatteningShape } from '../src/r3f/TileFlatteningPlugin.jsx';
-import { ReorientationPlugin } from '../src/three/ReorientationPlugin.js';
 import { AltitudeDetectionPlugin, AltitudeDetectionShape } from '../src/r3f/AltitudeDetectionPlugin.jsx';
 
 const dracoLoader = new DRACOLoader().setDecoderPath( 'https://www.gstatic.com/draco/v1/decoders/' );
@@ -70,7 +70,8 @@ function App() {
 
 	}, [] );
 
-	const [ height, setHeight ] = useState( 0 );
+	const [ minHeight, setMinHeight ] = useState( 0 );
+	const [ maxHeight, setMaxHeight ] = useState( 0 );
 	const [ tiles, setTiles ] = useState( null );
 	const [ lowPoint, setLowPoint ] = useState( null );
 
@@ -80,7 +81,7 @@ function App() {
 			camera={ {
 				position: [ 0, 0.5 * 1e3, 1e3 ],
 				near: 1,
-				far: 1e5,
+				far: 1e4,
 			} }
 			style={ {
 				width: '100%',
@@ -121,7 +122,8 @@ function App() {
 			</mesh>
 
 			{/* Tiles */}
-			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles }>
+			{/* "displayActiveTiles" is enabled to prevent tiles from hiding when they become flattened outside the bounding boxes */}
+			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles } displayActiveTiles={ true }>
 
 				{/* Sphere shows where the detected minimum point is */}
 				<mesh scale={ 5 } ref={ setLowPoint }>
@@ -132,14 +134,14 @@ function App() {
 				{/* plugins */}
 				<TilesPlugin plugin={ CesiumIonAuthPlugin } args={ { apiToken: import.meta.env.VITE_ION_KEY, assetId: '2275207', autoRefreshToken: true } } />
 				<TilesPlugin plugin={ GLTFExtensionsPlugin } dracoLoader={ dracoLoader } />
-				<TilesPlugin plugin={ ReorientationPlugin } lat={ LAT } lon={ LON } height={ height } key={ height } />
+				<TilesPlugin plugin={ ReorientationPlugin } lat={ LAT } lon={ LON } height={ minHeight } key={ minHeight } />
 				<TilesPlugin plugin={ TileCompressionPlugin } />
 				<TilesPlugin plugin={ TilesFadePlugin } />
 
 				{/* flattening */}
 				<TileFlatteningPlugin>
-					<TileFlatteningShape relativeToEllipsoid>
-						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ height }>
+					<TileFlatteningShape relativeToEllipsoid threshold={ maxHeight - minHeight } flattenRange={ 10 } thresholdMode={ 'flatten' }>
+						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ minHeight }>
 							<mesh scale={ PLANE_SIZE }>
 								<planeGeometry />
 							</mesh>
@@ -155,9 +157,16 @@ function App() {
 					plugin.onMinAltitudeChange = ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
-						setHeight( cart.height );
+						setMinHeight( cart.height );
 
 						lowPoint.position.copy( point );
+
+					};
+
+					plugin.onMaxAltitudeChange = ( altitude, point ) => {
+
+						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
+						setMaxHeight( cart.height );
 
 					};
 
