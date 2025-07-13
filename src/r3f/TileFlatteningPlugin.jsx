@@ -117,7 +117,7 @@ export function TileFlatteningShape( props ) {
 			threshold,
 			thresholdMode,
 			flattenRange,
-	 	} );
+		} );
 		setHash( null );
 
 		return () => {
