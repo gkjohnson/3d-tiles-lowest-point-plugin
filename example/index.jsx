@@ -91,6 +91,9 @@ function App() {
 				left: 0,
 				top: 0,
 			} }
+			gl={ {
+				logarithmicDepthBuffer: true,
+			} }
 			flat
 		>
 			{/* Set up lighting */}
@@ -140,7 +143,7 @@ function App() {
 
 				{/* flattening */}
 				<TileFlatteningPlugin>
-					<TileFlatteningShape relativeToEllipsoid threshold={ maxHeight - minHeight } flattenRange={ 10 } thresholdMode={ 'flatten' }>
+					<TileFlatteningShape relativeToEllipsoid threshold={ maxHeight - minHeight } flattenRange={ 0.2 } thresholdMode={ 'flatten' }>
 						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ minHeight }>
 							<mesh scale={ PLANE_SIZE }>
 								<planeGeometry />
