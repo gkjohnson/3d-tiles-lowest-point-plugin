@@ -153,27 +153,23 @@ function App() {
 				</TileFlatteningPlugin>
 
 				{/* altitude detection */}
-				<AltitudeDetectionPlugin useTriangleCenters ref={ plugin => {
-
-					// TODO: the plugin component needs to be modified to support setting of on* functions if the
-					// event listener function doesn't exist and / or the field exists
-					plugin.onMinAltitudeChange = ( altitude, point ) => {
+				<AltitudeDetectionPlugin
+					useTriangleCenters
+					onMinAltitudeChange={ ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
 						setMinHeight( cart.height );
 
 						lowPoint.position.copy( point );
 
-					};
-
-					plugin.onMaxAltitudeChange = ( altitude, point ) => {
+					} }
+					onMaxAltitudeChange = { ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
 						setMaxHeight( cart.height );
 
-					};
-
-				} }>
+					} }
+				>
 					<AltitudeDetectionShape relativeToEllipsoid>
 						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ 100 }>
 							<mesh scale={ PLANE_SIZE }>
