@@ -126,7 +126,7 @@ function App() {
 
 			{/* Tiles */}
 			{/* "displayActiveTiles" is enabled to prevent tiles from hiding when they become flattened outside the bounding boxes */}
-			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles } displayActiveTiles={ true }>
+			<TilesRenderer group={ { rotation: [ - Math.PI / 2, 0, 0 ] } } ref={ setTiles } displayActiveTiles={ true } autoDisableRendererCulling={ false }>
 
 				{/* Sphere shows where the detected minimum point is */}
 				<mesh scale={ 5 } ref={ setLowPoint }>
@@ -143,7 +143,18 @@ function App() {
 
 				{/* flattening */}
 				<TileFlatteningPlugin>
-					<TileFlatteningShape relativeToEllipsoid threshold={ maxHeight - minHeight } flattenRange={ 0.2 } thresholdMode={ 'flatten' }>
+					<TileFlatteningShape
+						relativeToEllipsoid
+
+						// the range of values above the flattening shape to flatten into the given range
+						threshold={ maxHeight - minHeight }
+
+						// the range of values to flatten the vertices in to
+						flattenRange={ 20 }
+
+						// what to do with the vertices above the flattening shape
+						thresholdMode={ 'flatten' }
+					>
 						<EastNorthUpFrame lat={ LAT } lon={ LON } height={ minHeight }>
 							<mesh scale={ PLANE_SIZE }>
 								<planeGeometry />
@@ -154,7 +165,10 @@ function App() {
 
 				{/* altitude detection */}
 				<AltitudeDetectionPlugin
+					// whether to sample triangle centers of vertices
 					useTriangleCenters
+
+					// callbacks for altitude values changing
 					onMinAltitudeChange={ ( altitude, point ) => {
 
 						const cart = tiles.ellipsoid.getPositionToCartographic( point, {} );
