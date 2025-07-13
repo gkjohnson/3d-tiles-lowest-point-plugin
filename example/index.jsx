@@ -37,7 +37,7 @@ function Tree( props ) {
 	const brown = 0xaa4422;
 	return (
 		<group { ...props }>
-			<mesh scale={ [ 0.1, 1, 0.1 ] } position-y={ 0.5 }>
+			<mesh scale={ [ 0.15, 1, 0.15 ] } position-y={ 0.5 }>
 				<cylinderGeometry />
 				<meshStandardMaterial color={ brown } />
 			</mesh>

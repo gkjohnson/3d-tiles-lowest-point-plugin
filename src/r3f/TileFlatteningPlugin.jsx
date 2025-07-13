@@ -1,7 +1,7 @@
 import { forwardRef, useContext, useEffect, useMemo, useState } from 'react';
 import { TilesPlugin, TilesPluginContext, TilesRendererContext } from '3d-tiles-renderer/r3f';
 import { TileFlatteningPlugin as TileFlatteningPluginImpl } from '../../src/three/TileFlatteningPlugin.js';
-import { Box3, Group, Matrix4, Vector3 } from 'three';
+import { Box3, Group, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 
 // NOTE: The flattening shape will not automatically update when child geometry vertices are adjusted so in order
@@ -120,7 +120,7 @@ export function TileFlatteningShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold ] );
+	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold, relativeGroup ] );
 
 	// detect if the object transform or geometry has changed
 	useFrame( () => {
