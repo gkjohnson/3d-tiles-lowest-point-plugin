@@ -16,7 +16,7 @@
     "@typescript-eslint/eslint-plugin": "^7.14.1",
     "@typescript-eslint/parser": "^7.14.1",
     "@vitejs/plugin-react": "^4.3.2",
-    "3d-tiles-renderer": "^0.4.11",
+    "3d-tiles-renderer": "^0.4.14",
     "eslint": "^8.57.1",
     "eslint-config-mdcs": "^5.0.0",
     "eslint-plugin-jest": "^28.6.0",

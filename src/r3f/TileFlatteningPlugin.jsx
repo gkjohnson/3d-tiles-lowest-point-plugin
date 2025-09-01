@@ -1,21 +1,24 @@
-import { forwardRef, useContext, useEffect, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { TilesPlugin, TilesPluginContext, TilesRendererContext } from '3d-tiles-renderer/r3f';
-import { TileFlatteningPlugin as TileFlatteningPluginImpl } from '../../src/three/TileFlatteningPlugin.js';
-import { Box3, Group, Vector3 } from 'three';
+import { TileFlatteningPlugin as TileFlatteningPluginImpl } from '3d-tiles-renderer/plugins';
+import { Box3, Group, Matrix4, Vector3 } from 'three';
 import { useFrame } from '@react-three/fiber';
 
 // NOTE: The flattening shape will not automatically update when child geometry vertices are adjusted so in order
 // to force a remount of the component the use should modify a "key" property when it needs to change.
 
 // construct a hash relative to a frame
-function objectHash( obj ) {
+const _matrix = /* @__PURE__ */ new Matrix4();
+function objectHash( obj, relativeMatrix ) {
 
 	let hash = '';
 	obj.traverse( c => {
 
+		let mat = c.matrix;
 		if ( c === obj ) {
 
-			return;
+			_matrix.copy( obj.matrixWorld ).premultiply( relativeMatrix );
+			mat = _matrix;
 
 		}
 
@@ -25,12 +28,11 @@ function objectHash( obj ) {
 
 		}
 
-		c.matrix.elements.forEach( v => {
+		mat.elements.forEach( v => {
 
 			hash += v.toFixed( 6 ) + ',';
 
 		} );
-
 
 	} );
 
@@ -73,21 +75,20 @@ export function TileFlatteningShape( props ) {
 
 	}, [] );
 
-	// Add the provided shape to the tile set
-	useEffect( () => {
+	const updateShape = useCallback( () => {
 
-		if ( tiles === null || group === null || plugin === null ) {
+		window.PLUGIN = plugin;
+		console.log('UPDATE')
+		plugin.deleteShape( relativeGroup );
 
-			return;
-
-		}
+		relativeGroup.clear();
+		relativeGroup.add( ...group.children.map( c => c.clone() ) );
 
 		// ensure world transforms are up to date
 		tiles.group.updateMatrixWorld();
 		group.updateMatrixWorld( true );
 
-		const local = group.clone();
-		local
+		relativeGroup
 			.matrixWorld
 			.copy( group.matrixWorld )
 			.premultiply( tiles.group.matrixWorldInverse )
@@ -102,7 +103,7 @@ export function TileFlatteningShape( props ) {
 		} else if ( relativeToEllipsoid ) {
 
 			const box = new Box3();
-			box.setFromObject( local );
+			box.setFromObject( relativeGroup );
 			box.getCenter( _direction );
 			tiles.ellipsoid.getPositionToNormal( _direction, _direction ).multiplyScalar( - 1 );
 
@@ -118,7 +119,23 @@ export function TileFlatteningShape( props ) {
 			thresholdMode,
 			flattenRange,
 		} );
-		setHash( null );
+
+		setHash( objectHash( group, tiles.group.matrixWorldInverse ) );
+
+	}, [ tiles, group, direction, relativeToEllipsoid, plugin, threshold, thresholdMode, flattenRange, relativeGroup ] );
+
+	// Add the provided shape to the tile set
+	useEffect( () => {
+
+		if ( tiles === null || group === null || plugin === null ) {
+
+			return;
+
+		}
+
+		console.log('GOT')
+
+		updateShape();
 
 		return () => {
 
@@ -126,9 +143,8 @@ export function TileFlatteningShape( props ) {
 
 		};
 
-	}, [ group, tiles, plugin, direction, relativeToEllipsoid, threshold, thresholdMode, flattenRange, relativeGroup ] );
+	}, [ group, plugin, relativeGroup, tiles, updateShape ] );
 
-	// detect if the object transform or geometry has changed
 	useFrame( () => {
 
 		if ( ! tiles || ! group ) {
@@ -137,23 +153,13 @@ export function TileFlatteningShape( props ) {
 
 		}
 
+		console.log('GOTT2')
+
 		// check if the object needs to updated
 		const newHash = objectHash( group, tiles.group.matrixWorldInverse );
 		if ( hash !== newHash ) {
 
-			tiles.group.updateMatrixWorld( true );
-			group.updateMatrixWorld( true );
-
-			relativeGroup.clear();
-			relativeGroup.add( ...group.children.map( c => c.clone() ) );
-			relativeGroup
-				.matrixWorld
-				.copy( group.matrixWorld )
-				.premultiply( tiles.group.matrixWorldInverse )
-				.decompose( relativeGroup.position, relativeGroup.quaternion, relativeGroup.scale );
-
-			plugin.updateShape( relativeGroup );
-			setHash( newHash );
+			updateShape();
 
 		}
 
